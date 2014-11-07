@@ -15,7 +15,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # The database to use
   config :database, :validate => :string, :required => true
    
-  # The collection to use. This value can use %{foo} values to dynamically
+  # The collection to use. This value can use `%{foo}` values to dynamically
   # select a collection based on data in the event.
   config :collection, :validate => :string, :required => true
 
@@ -27,9 +27,9 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # Number of seconds to wait after failure before retrying
   config :retry_delay, :validate => :number, :default => 3, :required => false
 
-  # If true, a _id field will be added to the document before insertion.
-  # The _id field will use the timestamp of the event and overwrite an existing
-  # _id field in the event.
+  # If true, an "_id" field will be added to the document before insertion.
+  # The "_id" field will use the timestamp of the event and overwrite an existing
+  # "_id" field in the event.
   config :generateId, :validate => :boolean, :default => false
 
   public
