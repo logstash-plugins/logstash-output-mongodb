@@ -13,13 +13,8 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
 
   # The database to use
   config :database, :validate => :string, :required => true
-<<<<<<< Updated upstream
-   
-  # The collection to use. This value can use `%{foo}` values to dynamically
-=======
 
-  # The collection to use. This value can use %{foo} values to dynamically
->>>>>>> Stashed changes
+  # The collection to use. This value can use `%{foo}` values to dynamically
   # select a collection based on data in the event.
   config :collection, :validate => :string, :required => true
 
