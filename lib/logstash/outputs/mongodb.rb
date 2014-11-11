@@ -2,7 +2,6 @@
 require "logstash/outputs/base"
 require "logstash/namespace"
 
-
 class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
 
   config_name "mongodb"
@@ -11,11 +10,16 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # a MongoDB URI to connect to
   # See http://docs.mongodb.org/manual/reference/connection-string/
   config :uri, :validate => :string, :required => true
-  
+
   # The database to use
   config :database, :validate => :string, :required => true
+<<<<<<< Updated upstream
    
   # The collection to use. This value can use `%{foo}` values to dynamically
+=======
+
+  # The collection to use. This value can use %{foo} values to dynamically
+>>>>>>> Stashed changes
   # select a collection based on data in the event.
   config :collection, :validate => :string, :required => true
 
@@ -41,7 +45,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       uriParsed.auths.each do |auth|
         if !auth['db_name'].nil?
           conn.add_auth(auth['db_name'], auth['username'], auth['password'], nil)
-        end 
+        end
       end
       conn.apply_saved_authentication()
     end
@@ -56,9 +60,9 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       if @isodate
         # the mongodb driver wants time values as a ruby Time object.
         # set the @timestamp value of the document to a ruby Time object, then.
-        document = event.to_hash
+        document = event.to_hash.merge("@timestamp" => event.timestamp.time)
       else
-        document = event.to_hash.merge("@timestamp" => event["@timestamp"].to_json)
+        document = event.to_hash.merge("@timestamp" => event.timestamp.to_iso8601)
       end
       if @generateId
         document['_id'] = BSON::ObjectId.new(nil, event["@timestamp"])
