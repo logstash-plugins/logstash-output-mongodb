@@ -2,7 +2,18 @@ The following is a list of people who have contributed ideas, code, bug
 reports, or in general have helped logstash along its way.
 
 Contributors:
+* Aaron Mildenstein (untergeek)
+* Graham Bleach (bleach)
+* John E. Vincent (lusis)
+* Jordan Sissel (jordansissel)
+* Kevin Amorin (kamorin)
+* Kevin O'Connor (kjoconnor)
+* Kurt Hurtado (kurtado)
+* Mathias Gug (zimathias)
+* Pete Fritchman (fetep)
 * Pier-Hugues Pellerin (ph)
+* Richard Pijnenburg (electrical)
+* bitsofinfo (bitsofinfo)
 
 Note: If you've sent us patches, bug reports, or otherwise contributed to
 Logstash, and you aren't on the list above and want to be, please let us know
