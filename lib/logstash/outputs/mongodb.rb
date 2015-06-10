@@ -57,7 +57,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
     rescue => e
       @logger.warn("Failed to send event to MongoDB", :event => event, :exception => e,
                    :backtrace => e.backtrace)
-      if e.message =~ /^11000/
+      if e.message =~ /^E11000/
           # On a duplicate key error, skip the insert.
           # We could check if the duplicate key err is the _id key
           # and generate a new primary key.
