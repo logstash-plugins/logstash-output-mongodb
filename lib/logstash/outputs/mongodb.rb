@@ -34,7 +34,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   public
   def register
     require "mongo"
-    client = Mongo::Client.new([@uri])
+    client = Mongo::Client.new([ '127.0.0.1:27017' ])
     @db = client.use(@database)
   end # def register
 
