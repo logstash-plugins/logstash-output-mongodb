@@ -34,17 +34,8 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   public
   def register
     require "mongo"
-    uriParsed=Mongo::URIParser.new(@uri)
-    conn = uriParsed.connection({})
-    if uriParsed.auths.length > 0
-      uriParsed.auths.each do |auth|
-        if !auth['db_name'].nil?
-          conn.add_auth(auth['db_name'], auth['username'], auth['password'], nil)
-        end 
-      end
-      conn.apply_saved_authentication()
-    end
-    @db = conn.db(@database)
+    client = Mongo::Client.new([ '127.0.0.1:27017' ])
+    @db = client.use(@database)
   end # def register
 
   public
@@ -62,7 +53,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       if @generateId
         document['_id'] = BSON::ObjectId.new(nil, event["@timestamp"])
       end
-      @db.collection(event.sprintf(@collection)).insert(document)
+      @db.database.collection(event.sprintf(@collection)).insert_one(document)
     rescue => e
       @logger.warn("Failed to send event to MongoDB", :event => event, :exception => e,
                    :backtrace => e.backtrace)
