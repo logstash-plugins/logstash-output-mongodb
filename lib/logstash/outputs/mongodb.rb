@@ -1,7 +1,7 @@
 # encoding: utf-8
 require "logstash/outputs/base"
 require "logstash/namespace"
-
+require "mongo"
 
 class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
 
@@ -33,7 +33,6 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
 
   public
   def register
-    require "mongo"
     Mongo::Logger.logger = @logger
     conn = Mongo::Client.new(@uri)
     @db = conn.use(@database)
