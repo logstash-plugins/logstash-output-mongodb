@@ -40,7 +40,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
 
   public
   def receive(event)
-    return unless output?(event)
+    
 
     begin
       if @isodate
