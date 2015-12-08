@@ -2,6 +2,9 @@
 require "logstash/outputs/base"
 require "logstash/namespace"
 require "mongo"
+require_relative "bson/big_decimal"
+require_relative "bson/logstash_timestamp"
+# require_relative "bson/logstash_event"
 
 class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
 
@@ -38,20 +41,18 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
     @db = conn.use(@database)
   end # def register
 
-  public
   def receive(event)
-    
-
     begin
-      if @isodate
-        # the mongodb driver wants time values as a ruby Time object.
-        # set the @timestamp value of the document to a ruby Time object, then.
-        document = event.to_hash
-      else
-        document = event.to_hash.merge("@timestamp" => event["@timestamp"].to_json)
+      # Our timestamp object now has a to_bson method, using it here
+      # why not use to_hash_with_metadata?
+      # {}.merge(other) so we don't taint the event hash innards
+      document = {}.merge(event.to_hash)
+      if !@isodate
+        # not using timestamp.to_bson
+        document["@timestamp"] = event["@timestamp"].to_json
       end
       if @generateId
-        document['_id'] = BSON::ObjectId.new(nil, event["@timestamp"])
+        document["_id"] = BSON::ObjectId.new(nil, event["@timestamp"])
       end
       @db[event.sprintf(@collection)].insert_one(document)
     rescue => e
