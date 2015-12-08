@@ -6,6 +6,6 @@ RSpec::Matchers.define :have_received do |event|
   match do |subject|
     client     = subject.instance_variable_get("@db")
     collection = subject.instance_variable_get("@collection")
-    client["#{collection}"].find("@timestamp" => event["@timestamp"].to_json).count > 0
+    client["#{collection}"].find("uuid" => event["uuid"]).count > 0
   end
 end

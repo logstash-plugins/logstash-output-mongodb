@@ -21,7 +21,10 @@ describe LogStash::Outputs::Mongodb do
 
     subject { LogStash::Outputs::Mongodb.new(config) }
 
-    let(:properties) { { "message" => "This is a message!"} }
+    let(:properties) { { "message" => "This is a message!",
+                         "uuid" => SecureRandom.uuid,
+                         "number" => BigDecimal.new("4321.1234"),
+                         "utf8" => "żółć"} }
     let(:event)      { LogStash::Event.new(properties) }
     let(:connection) { double("connection") }
     let(:client)     { double("client") }
