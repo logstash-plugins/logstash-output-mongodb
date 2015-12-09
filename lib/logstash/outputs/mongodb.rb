@@ -44,7 +44,6 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   def receive(event)
     begin
       # Our timestamp object now has a to_bson method, using it here
-      # why not use to_hash_with_metadata?
       # {}.merge(other) so we don't taint the event hash innards
       document = {}.merge(event.to_hash)
       if !@isodate

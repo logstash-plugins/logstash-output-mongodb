@@ -33,7 +33,7 @@ module BSON
      def to_bson(buffer = ByteBuffer.new)
       position = buffer.length
       buffer.put_int32(0)
-      to_hash_with_metadata.each do |field, value|
+      to_hash.each do |field, value|
         buffer.put_byte(value.bson_type)
         buffer.put_cstring(field.to_bson_key)
         value.to_bson(buffer)
