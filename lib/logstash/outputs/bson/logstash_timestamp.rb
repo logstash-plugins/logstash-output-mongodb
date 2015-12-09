@@ -36,7 +36,7 @@ module BSON
       # @see http://bsonspec.org/#/specification
       def from_bson(bson)
         seconds, fragment = BSON::Int64.from_bson(bson).divmod(1000)
-        new(at(seconds, fragment * 1000))
+        new(::Time.at(seconds, fragment * 1000).utc)
       end
     end
 

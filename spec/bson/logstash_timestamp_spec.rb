@@ -3,7 +3,7 @@ require_relative "../spec_helper"
 require 'stringio'
 
 describe ::LogStash::Timestamp do
-  let(:a_time) { Time.new(1918,11,11,11,0,0) }
+  let(:a_time) { Time.utc(1918,11,11,11,0,0) }
   let(:bson_time) { "\x80{y@\x88\xFE\xFF\xFF".force_encoding(BSON::BINARY) }
 
   subject { described_class.new(a_time) }
