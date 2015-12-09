@@ -34,13 +34,13 @@ module BSON
     # @return [ String ] The encoded string.
     # @see http://bsonspec.org/#/specification
     def to_bson(encoded = ''.force_encoding(BINARY))
-      encoded << [ self.to_f ].pack(PACK)
+      encoded << [ self ].pack(PACK)
     end
 
     module ClassMethods
 
       # Deserialize an instance of a BigDecimal from a BSON double.
-      # @param [ ByteBuffer ] buffer The byte buffer.
+      # @param [ BSON ] bson object from Mongo.
       # @return [ BigDecimal ] The decoded BigDecimal.
       # @see http://bsonspec.org/#/specification
       def from_bson(bson)
