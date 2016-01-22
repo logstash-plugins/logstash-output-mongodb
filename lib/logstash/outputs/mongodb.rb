@@ -33,6 +33,10 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # The "_id" field will use the timestamp of the event and overwrite an existing
   # "_id" field in the event.
   config :generateId, :validate => :boolean, :default => false
+  
+  # Name of the field to store the date of the event in MongoDB
+  config :timestamp_name, :validate => :string, :default => "@isodate", :required => false
+
 
   public
   def register
@@ -46,9 +50,17 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       # Our timestamp object now has a to_bson method, using it here
       # {}.merge(other) so we don't taint the event hash innards
       document = {}.merge(event.to_hash)
+      if ! @timestamp_name.eql? "@timestamp"
+        document[@timestamp_name] = document["@timestamp"]
+        document.delete("@timestamp")
+      end
       if !@isodate
         # not using timestamp.to_bson
-        document["@timestamp"] = event["@timestamp"].to_json
+        if ! @timestamp_name.eql? "@timestamp"
+          document[@timestamp_name] = event["@timestamp"].to_json
+        else
+          document["@timestamp"] = event["@timestamp"].to_json
+        end
       end
       if @generateId
         document["_id"] = BSON::ObjectId.new(nil, event["@timestamp"])
