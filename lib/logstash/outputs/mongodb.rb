@@ -35,7 +35,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   config :generateId, :validate => :boolean, :default => false
   
   # Name of the field to store the date of the event in MongoDB
-  config :timestamp_name, :validate => :string, :default => "@isodate", :required => false
+  config :timestamp_name, :validate => :string, :default => "@timestamp", :required => false
 
 
   public
