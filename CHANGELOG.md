@@ -1,3 +1,5 @@
+# 2.0.4
+  - New dependency requirements for logstash-core for the 5.0 release
 ## 2.0.3
  - Patch Timestamp and BigDecimal with to_bson method and register with BSON.
 
