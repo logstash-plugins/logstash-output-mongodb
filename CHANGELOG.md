@@ -1,3 +1,6 @@
+## 3.0.1
+ - Docs: Fix doc generation issue by removing extraneous comments and adding a short description of the plugin
+
 ## 3.0.0
  - Breaking: Updated plugin to use new Java Event APIs
  - relax logstash-core-plugin-api constrains

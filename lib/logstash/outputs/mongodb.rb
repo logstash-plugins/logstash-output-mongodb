@@ -4,29 +4,29 @@ require "logstash/namespace"
 require "mongo"
 require_relative "bson/big_decimal"
 require_relative "bson/logstash_timestamp"
-# require_relative "bson/logstash_event"
 
+# This output writes events to MongoDB.
 class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
 
   config_name "mongodb"
 
-  # a MongoDB URI to connect to
-  # See http://docs.mongodb.org/manual/reference/connection-string/
+  # A MongoDB URI to connect to.
+  # See http://docs.mongodb.org/manual/reference/connection-string/.
   config :uri, :validate => :string, :required => true
 
-  # The database to use
+  # The database to use.
   config :database, :validate => :string, :required => true
 
   # The collection to use. This value can use `%{foo}` values to dynamically
   # select a collection based on data in the event.
   config :collection, :validate => :string, :required => true
 
-  # If true, store the @timestamp field in mongodb as an ISODate type instead
+  # If true, store the @timestamp field in MongoDB as an ISODate type instead
   # of an ISO8601 string.  For more information about this, see
-  # http://www.mongodb.org/display/DOCS/Dates
+  # http://www.mongodb.org/display/DOCS/Dates.
   config :isodate, :validate => :boolean, :default => false
 
-  # Number of seconds to wait after failure before retrying
+  # The number of seconds to wait after failure before retrying.
   config :retry_delay, :validate => :number, :default => 3, :required => false
 
   # If true, an "_id" field will be added to the document before insertion.
