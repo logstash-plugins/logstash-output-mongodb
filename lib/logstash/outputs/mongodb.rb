@@ -38,7 +38,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   def register
     Mongo::Logger.logger = @logger
     conn = Mongo::Client.new(@uri)
-    @db = conn.use(@database)
+    @db = conn
   end # def register
 
   def receive(event)
@@ -53,20 +53,13 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       if @generateId
         document["_id"] = BSON::ObjectId.new(nil, event.timestamp)
       end
-      @db[event.sprintf(@collection)].insert_one(document)
+      document["social_monitor_sources"].each do |e|
+        @db.use(e["company_uid"])[event.sprintf(e["monitor_uid"])].insert_one(document)
+      end
     rescue => e
+      p event.to_json
       @logger.warn("Failed to send event to MongoDB", :event => event, :exception => e,
                    :backtrace => e.backtrace)
-      if e.message =~ /^E11000/
-          # On a duplicate key error, skip the insert.
-          # We could check if the duplicate key err is the _id key
-          # and generate a new primary key.
-          # If the duplicate key error is on another field, we have no way
-          # to fix the issue.
-      else
-        sleep @retry_delay
-        retry
-      end
     end
   end # def receive
 end # class LogStash::Outputs::Mongodb
