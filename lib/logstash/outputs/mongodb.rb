@@ -46,6 +46,15 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       # Our timestamp object now has a to_bson method, using it here
       # {}.merge(other) so we don't taint the event hash innards
       document = {}.merge(event.to_hash)
+
+      # Need to convert plain string values to respective Object Types
+      document['post_created_at'] = DateTime.parse(document['post_created_at']).to_bson
+
+      document['keywords'].each do |keyword|
+        keyword.gsub!("$", "\\u0024") if keyword.start_with?("$")
+        keyword.gsub!(".", "\\u002e") if keyword.start_with?(".")
+      end
+    
       if !@isodate
         # not using timestamp.to_bson
         document["@timestamp"] = event.timestamp.to_json
@@ -57,7 +66,6 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         @db.use(e["company_uid"])[event.sprintf(e["monitor_uid"])].insert_one(document)
       end
     rescue => e
-      p event.to_json
       @logger.warn("Failed to send event to MongoDB", :event => event, :exception => e,
                    :backtrace => e.backtrace)
     end
