@@ -38,7 +38,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   def register
     Mongo::Logger.logger = @logger
     conn = Mongo::Client.new(@uri)
-    @db = conn.use(@database)
+    @db = conn
   end # def register
 
   def receive(event)
@@ -46,6 +46,15 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       # Our timestamp object now has a to_bson method, using it here
       # {}.merge(other) so we don't taint the event hash innards
       document = {}.merge(event.to_hash)
+
+      # Need to convert plain string values to respective Object Types
+      document['post_created_at'] = DateTime.parse(document['post_created_at']).to_bson
+
+      document['keywords'].each do |keyword|
+        keyword.gsub!("$", "\\u0024") if keyword.start_with?("$")
+        keyword.gsub!(".", "\\u002e") if keyword.start_with?(".")
+      end
+    
       if !@isodate
         # not using timestamp.to_bson
         document["@timestamp"] = event.timestamp.to_json
@@ -53,20 +62,12 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       if @generateId
         document["_id"] = BSON::ObjectId.new(nil, event.timestamp)
       end
-      @db[event.sprintf(@collection)].insert_one(document)
+      document["social_monitor_sources"].each do |e|
+        @db.use(e["company_uid"])[event.sprintf(e["monitor_uid"])].insert_one(document)
+      end
     rescue => e
       @logger.warn("Failed to send event to MongoDB", :event => event, :exception => e,
                    :backtrace => e.backtrace)
-      if e.message =~ /^E11000/
-          # On a duplicate key error, skip the insert.
-          # We could check if the duplicate key err is the _id key
-          # and generate a new primary key.
-          # If the duplicate key error is on another field, we have no way
-          # to fix the issue.
-      else
-        sleep @retry_delay
-        retry
-      end
     end
   end # def receive
 end # class LogStash::Outputs::Mongodb
