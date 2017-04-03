@@ -34,11 +34,41 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # "_id" field in the event.
   config :generateId, :validate => :boolean, :default => false
 
+
+  # Bulk insert flag, set to true to allow bulk insertion, else it will insert events one by one.
+  config :bulk, :validate => :boolean, :default => false
+  # Bulk interval, Used to insert events periodically if the "bulk" flag is activated.
+  config :bulk_interval, :validate => :number, :default => 2
+  # Bulk events number, if the number of events to insert into a collection raise that limit, it will be bulk inserted
+  # whatever the bulk interval value (mongodb hard limit is 1000).
+  config :bulk_size, :validate => :number, :default => 900, :maximum => 999, :min => 2
+
+  # Mutex used to synchronize access to 'documents'
+  @@mutex = Mutex.new
+
   public
   def register
     Mongo::Logger.logger = @logger
     conn = Mongo::Client.new(@uri)
     @db = conn.use(@database)
+
+    if @bulk_size > 1000
+      raise LogStash::ConfigurationError, "Bulk size must be lower than '1000', currently '#{@bulk_size}'"
+    end
+    @documents = {}
+    Thread.new do
+      loop do
+        sleep @bulk_interval
+        @@mutex.synchronize do
+          @documents.each do |collection, values|
+            if values.length > 0
+              @db[collection].insert_many(values)
+              @documents.delete(collection)
+            end
+          end
+        end
+      end
+    end
   end # def register
 
   def receive(event)
@@ -53,7 +83,23 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       if @generateId
         document["_id"] = BSON::ObjectId.new(nil, event.timestamp)
       end
-      @db[event.sprintf(@collection)].insert_one(document)
+      if @bulk
+        @@mutex.synchronize do
+          collection = event.sprintf(@collection)
+          if(!@documents[collection])
+            @documents[collection] = []
+          end
+          @documents[collection].push(document)
+
+          if(@documents[collection].length >= @bulk_size)
+            @db[collection].insert_many(@documents[collection])
+            @documents.delete(collection)
+          end
+        end
+      else
+        @db[event.sprintf(@collection)].insert_one(document)
+      end
+
     rescue => e
       @logger.warn("Failed to send event to MongoDB", :event => event, :exception => e,
                    :backtrace => e.backtrace)
