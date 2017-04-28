@@ -1,3 +1,6 @@
+## 3.1.0
+ - Add support for bulk inserts to improve performance.
+
 ## 3.0.1
  - Docs: Fix doc generation issue by removing extraneous comments and adding a short description of the plugin
 
