@@ -1,3 +1,6 @@
+## 3.1.2
+  - Fix some documentation issues
+
 ## 3.1.0
  - Add support for bulk inserts to improve performance.
 
