@@ -19,7 +19,7 @@ describe LogStash::Outputs::Mongodb do
 
   describe "#send" do
 
-    subject { LogStash::Outputs::Mongodb.new(config) }
+    subject! { LogStash::Outputs::Mongodb.new(config) }
 
     let(:properties) { { "message" => "This is a message!",
                          "uuid" => SecureRandom.uuid,
