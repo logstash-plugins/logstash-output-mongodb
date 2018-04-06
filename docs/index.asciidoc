@@ -1,5 +1,6 @@
 :plugin: mongodb
 :type: output
+:default_codec: plain
 
 ///////////////////////////////////////////
 START - GENERATED VARIABLES, DO NOT EDIT!
@@ -132,3 +133,5 @@ See http://docs.mongodb.org/manual/reference/connection-string/.
 
 [id="plugins-{type}s-{plugin}-common-options"]
 include::{include_path}/{type}.asciidoc[]
+
+:default_codec!:
