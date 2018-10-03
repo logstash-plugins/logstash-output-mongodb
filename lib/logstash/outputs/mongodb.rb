@@ -21,6 +21,9 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # select a collection based on data in the event.
   config :collection, :validate => :string, :required => true
 
+  # If true, will upsert (insert or update) documents on MongoDB instead of inserting
+  config :upsert, :validate => :boolean, :default => false
+
   # If true, store the @timestamp field in MongoDB as an ISODate type instead
   # of an ISO8601 string.  For more information about this, see
   # http://www.mongodb.org/display/DOCS/Dates.
@@ -55,6 +58,10 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
     if @bulk_size > 1000
       raise LogStash::ConfigurationError, "Bulk size must be lower than '1000', currently '#{@bulk_size}'"
     end
+
+    if @upsert && @generateId
+      raise LogStash::ConfigurationError, "generateId and upsert cannot be both turned on at the same time"
+    end
     @documents = {}
     Thread.new do
       loop do
@@ -62,7 +69,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         @@mutex.synchronize do
           @documents.each do |collection, values|
             if values.length > 0
-              @db[collection].insert_many(values)
+              @db[collection].bulk_write(@documents[collection], {:ordered => false})
               @documents.delete(collection)
             end
           end
@@ -73,6 +80,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
 
   def receive(event)
     begin
+      collection = event.sprintf(@collection)
       # Our timestamp object now has a to_bson method, using it here
       # {}.merge(other) so we don't taint the event hash innards
       document = {}.merge(event.to_hash)
@@ -80,24 +88,32 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         # not using timestamp.to_bson
         document["@timestamp"] = event.timestamp.to_json
       end
+      doUpsert = @upsert && document["_id"]
       if @generateId
         document["_id"] = BSON::ObjectId.new(nil, event.timestamp)
       end
       if @bulk
         @@mutex.synchronize do
-          collection = event.sprintf(@collection)
           if(!@documents[collection])
             @documents[collection] = []
           end
-          @documents[collection].push(document)
+          if doUpsert &&
+            @documents[collection].push({ :replace_one => { :find => { :_id => document["_id"] }, :replacement => document, :upsert => true } })
+          else
+            @documents[collection].push({ :insert_one => document })
+          end
 
           if(@documents[collection].length >= @bulk_size)
-            @db[collection].insert_many(@documents[collection])
+            @db[@collection].bulk_write(@documents[collection], {:ordered => false})
             @documents.delete(collection)
           end
         end
       else
-        @db[event.sprintf(@collection)].insert_one(document)
+        if doUpsert
+          @db[@collection].find({:_id => document["_id"]}).replace_one(document, { :upsert => true })
+        else
+          @db[@collection].insert_one(document)
+        end
       end
 
     rescue => e
