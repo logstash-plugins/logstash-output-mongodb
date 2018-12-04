@@ -44,7 +44,7 @@ module BSON
       # @return [ BigDecimal ] The decoded BigDecimal.
       # @see http://bsonspec.org/#/specification
       def from_bson(bson)
-        from_bson_double(bson.read(8))
+        from_bson_double(bson.get_bytes(8))
       end
 
       private
