@@ -1,6 +1,5 @@
 # encoding: utf-8
 require_relative "../spec_helper"
-require 'stringio'
 
 describe ::LogStash::Timestamp do
   let(:time_array) { [1918,11,11,11,0,0, "+00:00"] }
@@ -13,8 +12,8 @@ describe ::LogStash::Timestamp do
     expect(subject).to respond_to(:to_bson)
   end
 
-  it "to_bson returns a binary encoded timestamp" do
-    expect(timestamp.to_bson).to eq(bson_time)
+  it "to_bson returns a binary encoded timestamp which may be encoded back from bson" do
+    expect(Time::from_bson(timestamp.to_bson)).to eq(Time::from_bson(bson_time))
   end
 
   it "bson_type returns a binary encoded 9" do
@@ -24,7 +23,7 @@ describe ::LogStash::Timestamp do
   describe "class methods" do
     it "builds a new Timestamp from BSON" do
       expected = ::LogStash::Timestamp.new(a_time)
-      decoded = ::LogStash::Timestamp.from_bson(StringIO.new(bson_time))
+      decoded = ::LogStash::Timestamp.from_bson(bson_time)
       expect(decoded <=> expected).to eq(0)
     end
   end
