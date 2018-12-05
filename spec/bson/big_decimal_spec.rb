@@ -1,7 +1,6 @@
 # encoding: utf-8
 require 'bigdecimal'
 require_relative "../spec_helper"
-require 'stringio'
 
 describe ::BigDecimal do
   let(:a_number) { "4321.1234" }
@@ -13,8 +12,8 @@ describe ::BigDecimal do
     expect(subject).to respond_to(:to_bson)
   end
 
-  it "to_bson returns a binary encoded number" do
-    expect(subject.to_bson).to eq(4321.1234.to_bson)
+  it "to_bson returns a binary encoded number  which can be encoded back from bson" do
+    expect(BigDecimal::from_bson(subject.to_bson)).to eq(BigDecimal::from_bson(4321.1234.to_bson))
   end
 
   it "bson_type returns a binary encoded 1" do
@@ -23,7 +22,7 @@ describe ::BigDecimal do
 
   describe "class methods" do
     it "builds a new BigDecimal from BSON" do
-      decoded = described_class.from_bson(StringIO.new(4321.1234.to_bson))
+      decoded = described_class.from_bson(4321.1234.to_bson)
       expect(decoded).to eql(BigDecimal.new(a_number))
     end
   end

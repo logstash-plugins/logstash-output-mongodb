@@ -33,8 +33,8 @@ module BSON
     #   1.221311.to_bson
     # @return [ String ] The encoded string.
     # @see http://bsonspec.org/#/specification
-    def to_bson(encoded = ''.force_encoding(BINARY))
-      encoded << [ self ].pack(PACK)
+    def to_bson(buffer = ByteBuffer.new)
+      buffer.put_bytes([ self ].pack(PACK))	
     end
 
     module ClassMethods
