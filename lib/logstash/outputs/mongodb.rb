@@ -109,6 +109,14 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
           # and generate a new primary key.
           # If the duplicate key error is on another field, we have no way
           # to fix the issue.
+      elsif e.message =~ /^not authorized/
+          # Sometime worker cannot login when first insert.
+          # Re-login can resolve this not authorized problem.
+        @logger.warn("Not authorized, re-login...")
+        conn = Mongo::Client.new(@uri)
+        @db = conn.use(@database)
+        sleep @retry_delay
+        retry
       else
         sleep @retry_delay
         retry
