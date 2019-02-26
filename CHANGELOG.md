@@ -1,3 +1,6 @@
+## 3.2.0
+  - Add support for upsert
+
 ## 3.1.4
   - Docs: Set the default_codec doc attribute.
 
