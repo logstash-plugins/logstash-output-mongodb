@@ -8,23 +8,21 @@ describe LogStash::Outputs::Mongodb do
   let(:database)   { 'logstash' }
   let(:collection) { 'logs' }
 
-  let(:config) do
-    { "uri" => uri, "database" => database, "collection" => collection }
-  end
+  let(:config) {{
+    "uri" => uri,
+    "database" => database,
+    "collection" => collection
+  }}
 
-  it "should register" do
+  it "should register and close" do
     plugin = LogStash::Plugin.lookup("output", "mongodb").new(config)
     expect {plugin.register}.to_not raise_error
+    plugin.close
   end
 
-  describe "#send" do
-
+  describe "receive" do
     subject! { LogStash::Outputs::Mongodb.new(config) }
 
-    let(:properties) { { "message" => "This is a message!",
-                         "uuid" => SecureRandom.uuid,
-                         "number" => BigDecimal.new("4321.1234"),
-                         "utf8" => "żółć"} }
     let(:event)      { LogStash::Event.new(properties) }
     let(:connection) { double("connection") }
     let(:client)     { double("client") }
@@ -38,10 +36,51 @@ describe LogStash::Outputs::Mongodb do
       subject.register
     end
 
-    it "should send the event to the database" do
-      expect(collection).to receive(:insert_one)
-      subject.receive(event)
+    after(:each) do
+      subject.close
+    end
+
+    describe "#send" do
+      let(:properties) {{
+        "message" => "This is a message!",
+        "uuid" => SecureRandom.uuid,
+        "number" => BigDecimal.new("4321.1234"),
+        "utf8" => "żółć"
+      }}
+
+      it "should send the event to the database" do
+        expect(collection).to receive(:insert_one)
+        subject.receive(event)
+      end
+    end
+
+    describe "no event @timestamp" do
+      let(:properties) { { "message" => "foo" } }
+
+      it "should not contain a @timestamp field in the mongo document" do
+        expect(event).to receive(:timestamp).and_return(nil)
+        expect(event).to receive(:to_hash).and_return(properties)
+        expect(collection).to receive(:insert_one).with(properties)
+        subject.receive(event)
+      end
+    end
+
+    describe "generateId" do
+      let(:properties) { { "message" => "foo" } }
+      let(:config) {{
+          "uri" => uri,
+          "database" => database,
+          "collection" => collection,
+          "generateId" => true
+      }}
+
+      it "should contain a BSON::ObjectId as _id" do
+        expect(BSON::ObjectId).to receive(:new).and_return("BSON::ObjectId")
+        expect(event).to receive(:timestamp).and_return(nil)
+        expect(event).to receive(:to_hash).and_return(properties)
+        expect(collection).to receive(:insert_one).with(properties.merge("_id" => "BSON::ObjectId"))
+        subject.receive(event)
+      end
     end
   end
-
 end
