@@ -46,19 +46,22 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # Mutex used to synchronize access to 'documents'
   @@mutex = Mutex.new
 
-  public
   def register
+    if @bulk_size > 1000
+      raise LogStash::ConfigurationError, "Bulk size must be lower than '1000', currently '#{@bulk_size}'"
+    end
+
     Mongo::Logger.logger = @logger
     conn = Mongo::Client.new(@uri)
     @db = conn.use(@database)
 
-    if @bulk_size > 1000
-      raise LogStash::ConfigurationError, "Bulk size must be lower than '1000', currently '#{@bulk_size}'"
-    end
+    @closed = Concurrent::AtomicBoolean.new(false)
     @documents = {}
-    Thread.new do
-      loop do
-        sleep @bulk_interval
+
+    @bulk_thread = Thread.new(@bulk_interval) do |bulk_interval|
+      while @closed.false? do
+        sleep(bulk_interval)
+
         @@mutex.synchronize do
           @documents.each do |collection, values|
             if values.length > 0
@@ -69,23 +72,31 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         end
       end
     end
-  end # def register
+  end
 
   def receive(event)
     begin
       # Our timestamp object now has a to_bson method, using it here
       # {}.merge(other) so we don't taint the event hash innards
       document = {}.merge(event.to_hash)
+
       if !@isodate
-        # not using timestamp.to_bson
-        document["@timestamp"] = event.timestamp.to_json
+        timestamp = event.timestamp
+        if timestamp
+          # not using timestamp.to_bson
+          document["@timestamp"] = timestamp.to_json
+        else
+          @logger.warn("Cannot set MongoDB document `@timestamp` field because it does not exist in the event", :event => event)
+        end
       end
+
       if @generateId
-        document["_id"] = BSON::ObjectId.new(nil, event.timestamp)
+        document["_id"] = BSON::ObjectId.new
       end
+
       if @bulk
+        collection = event.sprintf(@collection)
         @@mutex.synchronize do
-          collection = event.sprintf(@collection)
           if(!@documents[collection])
             @documents[collection] = []
           end
@@ -99,20 +110,25 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
       else
         @db[event.sprintf(@collection)].insert_one(document)
       end
-
     rescue => e
-      @logger.warn("Failed to send event to MongoDB", :event => event, :exception => e,
-                   :backtrace => e.backtrace)
       if e.message =~ /^E11000/
-          # On a duplicate key error, skip the insert.
-          # We could check if the duplicate key err is the _id key
-          # and generate a new primary key.
-          # If the duplicate key error is on another field, we have no way
-          # to fix the issue.
+        # On a duplicate key error, skip the insert.
+        # We could check if the duplicate key err is the _id key
+        # and generate a new primary key.
+        # If the duplicate key error is on another field, we have no way
+        # to fix the issue.
+        @logger.warn("Skipping insert because of a duplicate key error", :event => event, :exception => e)
       else
-        sleep @retry_delay
+        @logger.warn("Failed to send event to MongoDB, retrying in #{@retry_delay.to_s} seconds", :event => event, :exception => e)
+        sleep(@retry_delay)
         retry
       end
     end
-  end # def receive
-end # class LogStash::Outputs::Mongodb
+  end
+
+  def close
+    @closed.make_true
+    @bulk_thread.wakeup
+    @bulk_thread.join
+  end
+end
