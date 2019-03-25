@@ -1,3 +1,6 @@
+## 3.1.5
+  - Fixed @timestamp handling, BSON::ObjectId generation, close method [#57](https://github.com/logstash-plugins/logstash-output-mongodb/pull/57)
+
 ## 3.1.4
   - Docs: Set the default_codec doc attribute.
 
