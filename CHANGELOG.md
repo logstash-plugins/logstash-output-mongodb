@@ -1,3 +1,6 @@
+## 3.1.6
+  - Fixes BigDecimal and Timestamp encoding and update driver to v2.6 [#59](https://github.com/logstash-plugins/logstash-output-mongodb/pull/59)
+
 ## 3.1.5
   - Fixed @timestamp handling, BSON::ObjectId generation, close method [#57](https://github.com/logstash-plugins/logstash-output-mongodb/pull/57)
 
