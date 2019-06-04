@@ -112,6 +112,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
           end
         end
       else
+        @logger.info("upsert/_id", :upsert => @upsert, :id => document["_id"])
         if @upsert && document.key?("_id")
           @db[event.sprintf(@collection)].replace_one({ _id: document["_id"] }, document, { upsert: true })
         else
