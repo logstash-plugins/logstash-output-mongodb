@@ -25,7 +25,7 @@ module BSON
     # A time is type 0x09 in the BSON spec.
     BSON_TYPE = 9.chr.force_encoding(BINARY).freeze
 
-    def to_bson(buffer = ByteBuffer.new)
+    def to_bson(buffer = ByteBuffer.new, validating_keys = Config.validating_keys?)
       time.to_bson(buffer)
     end
 
