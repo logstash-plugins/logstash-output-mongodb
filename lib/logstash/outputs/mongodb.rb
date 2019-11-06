@@ -53,7 +53,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
 
     Mongo::Logger.logger = @logger
     conn = Mongo::Client.new(@uri)
-    @db = conn.use(@database)
+    @db = conn.use(event.sprintf(@database))
 
     @closed = Concurrent::AtomicBoolean.new(false)
     @documents = {}
