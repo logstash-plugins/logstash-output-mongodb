@@ -34,6 +34,8 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # "_id" field in the event.
   config :generateId, :validate => :boolean, :default => false
 
+  config :upsert, :validate => :boolean, :default => false, :required => false
+  config :document_id, :validate => :string, :default => nil, :required => false
 
   # Bulk insert flag, set to true to allow bulk insertion, else it will insert events one by one.
   config :bulk, :validate => :boolean, :default => false
@@ -90,7 +92,9 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         end
       end
 
-      if @generateId
+      if @document_id != nil
+        document["_id"] = event.sprintf(@document_id)
+      elsif @generateId
         document["_id"] = BSON::ObjectId.new
       end
 
@@ -108,7 +112,12 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
           end
         end
       else
-        @db[event.sprintf(@collection)].insert_one(document)
+        if @upsert
+          update_result = @db[event.sprintf(@collection)].update_one({_id: document['_id']}, {'$set' => document.reject {|k, v| k == '_id'}},
+                  {:upsert => true})
+        else
+          @db[event.sprintf(@collection)].insert_one(document)
+        end
       end
     rescue => e
       if e.message =~ /^E11000/
