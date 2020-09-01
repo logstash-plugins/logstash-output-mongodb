@@ -40,6 +40,10 @@ This plugin supports the following configuration options plus the <<plugins-{typ
 | <<plugins-{type}s-{plugin}-isodate>> |<<boolean,boolean>>|No
 | <<plugins-{type}s-{plugin}-retry_delay>> |<<number,number>>|No
 | <<plugins-{type}s-{plugin}-uri>> |<<string,string>>|Yes
+| <<plugins-{type}s-{plugin}-action>> |<<string,string>>|Yes
+| <<plugins-{type}s-{plugin}-query_key>> |<<string,string>>|No
+| <<plugins-{type}s-{plugin}-query_value>> |<<string,string>>|No
+| <<plugins-{type}s-{plugin}-upsert>> |<<boolean,boolean>>|No
 |=======================================================================
 
 Also see <<plugins-{type}s-{plugin}-common-options>> for a list of options supported by all
@@ -129,6 +133,50 @@ The number of seconds to wait after failure before retrying.
 A MongoDB URI to connect to.
 See http://docs.mongodb.org/manual/reference/connection-string/.
 
+[id="plugins-{type}s-{plugin}-action"]
+===== `action`
+
+* Value type is <<string,string>>
+* Default value is `insert`.
+
+The method used to write processed events to MongoDB.
+
+Possible values are `insert`, `update` or `replace`.
+
+[id="plugins-{type}s-{plugin}-query_key"]
+===== `query_key`
+
+* Value type is <<string,string>>
+* Default value is `_id`.
+
+The key of the query to find the document to update or replace in MongoDB.
+
+query_key is used like described https://docs.mongodb.com/ruby-driver/v2.6/tutorials/ruby-driver-bulk-operations[here]
+for `update` and `replace` examples:
+
+  :filter => {query_key => query_value}
+
+[id="plugins-{type}s-{plugin}-query_value"]
+===== `query_value`
+
+* Value type is <<string,string>>
+* There is no default value for this setting.
+
+The value of the query to find the document to update or replace  in MongoDB. This can be dynamic using the `%{foo}` syntax.
+
+query_value is used like described https://docs.mongodb.com/ruby-driver/v2.6/tutorials/ruby-driver-bulk-operations[here]
+for `update` and `replace` examples:
+
+  :filter => {query_key => query_value}
+
+[id="plugins-{type}s-{plugin}-upsert"]
+===== `upsert`
+
+* Value type is <<boolean,boolean>>
+* Default value is `false`.
+
+If true, a new document is created if no document exists in DB with given `document_id`.
+Only applies if action is `update` or `replace`.
 
 
 [id="plugins-{type}s-{plugin}-common-options"]
