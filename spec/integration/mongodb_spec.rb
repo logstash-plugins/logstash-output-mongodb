@@ -7,10 +7,11 @@ describe LogStash::Outputs::Mongodb, :integration => true do
   let(:database)   { 'logstash' }
   let(:collection) { 'logs' }
   let(:uuid)       { SecureRandom.uuid }
+  let(:action) { 'insert' }
 
   let(:config) do
     { "uri" => uri, "database" => database,
-      "collection" => collection, "isodate" => true }
+      "collection" => collection, "isodate" => true, "action" => action }
   end
 
   describe "#send" do
