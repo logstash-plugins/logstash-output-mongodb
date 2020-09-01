@@ -91,7 +91,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
     if @action != "insert" && @action != "update" && @action != "replace"
       raise LogStash::ConfigurationError, "Only insert, update and replace are valid for 'action' setting."
     end
-    if (@action == "update" || @action == "replace") && @query_value.blank?
+    if (@action == "update" || @action == "replace") && (@query_value.nil? || @query_value.empty?)
       raise LogStash::ConfigurationError, "If action is update or replace, query_value must be set."
     end
   end
@@ -160,6 +160,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
     ops = []
     documents.each do |doc|
       replaced_query_value = doc["metadata_mongodb_output_query_value"]
+      doc.delete("metadata_mongodb_output_query_value")
       if @action == "insert"
         ops << {:insert_one => doc}
       elsif @action == "update"
