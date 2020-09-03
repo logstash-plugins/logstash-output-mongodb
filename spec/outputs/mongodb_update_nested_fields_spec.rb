@@ -23,18 +23,22 @@ describe LogStash::Outputs::Mongodb do
 
     let(:properties) { {
         "message" => "This is a message!",
-        "hashField" => {
-            "numField" => 1,
-            "hashField" => {
+        "rootHashField" => {
+            "numFieldInHash" => 1,
+            "hashFieldInHash" => {
                 "numField": 2
             },
-            "arrayField" => ["one", "two", "three"]
+            "arrayFieldInHash" => ["one", "two", "three"]
         },
-        "arrayField": [
-            {"strField" => "four"},
-            {"strField" => "five"},
-            {"strField" => "six"},
-            "numField" => 3
+        "rootArrayField": [
+            {"strFieldInArray" => "four"},
+            {"strFieldInArray" => "five"},
+            {"strFieldInArray" => "six"}
+        ],
+        "nestedArrayField": [
+            {"strFieldInArray" => "four", "arrayFieldInArray" => [3, 4], "hashFieldInArray" => {"numField" => 9}},
+            {"strFieldInArray" => "five", "arrayFieldInArray" => [5, 6], "hashFieldInArray" => {"numField" => 10}},
+            {"strFieldInArray" => "six", "arrayFieldInArray" => [7, 8], "hashFieldInArray" => {"numField" => 11}}
         ]
     } }
     let(:event) { LogStash::Event.new(properties) }
@@ -56,21 +60,25 @@ describe LogStash::Outputs::Mongodb do
 
     describe "when processing an event with nested hash" do
 
-      it "should send a document update to mongodb with dotted notation" do
+      it "should send a document update to mongodb with dotted notation for fields in inner hashes" do
         expect(event).to receive(:timestamp).and_return(nil)
         expect(event).to receive(:to_hash).and_return(properties)
         expect(collection).to receive(:bulk_write).with(
             [{:update_one => {:filter => {"_id" => query_value}, :update => {"$set" => {
                 "message" => "This is a message!",
-                "hashField.numField" => 1,
-                "hashField.hashField.numField" => 2,
-                "hashField.arrayField.0" => "one",
-                "hashField.arrayField.1" => "two",
-                "hashField.arrayField.2" => "three",
-                "arrayField.0.strField" => "four",
-                "arrayField.1.strField" => "five",
-                "arrayField.2.strField" => "six",
-                "arrayField.3.numField" => 3,
+                "rootHashField.numFieldInHash" => 1,
+                "rootHashField.hashFieldInHash.numField" => 2,
+                "rootHashField.arrayFieldInHash" => ["one", "two", "three"],
+                "rootArrayField" => [
+                    {"strFieldInArray" => "four"},
+                    {"strFieldInArray" => "five"},
+                    {"strFieldInArray" => "six"}
+                ],
+                "nestedArrayField" => [
+                    {"strFieldInArray" => "four", "arrayFieldInArray" => [3, 4], "hashFieldInArray" => {"numField" => 9}},
+                    {"strFieldInArray" => "five", "arrayFieldInArray" => [5, 6], "hashFieldInArray" => {"numField" => 10}},
+                    {"strFieldInArray" => "six", "arrayFieldInArray" => [7, 8], "hashFieldInArray" => {"numField" => 11}}
+                ],
             }}, :upsert => false}}]
         )
         subject.receive(event)
