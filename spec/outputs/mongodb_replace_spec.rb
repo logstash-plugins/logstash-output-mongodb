@@ -21,7 +21,7 @@ describe LogStash::Outputs::Mongodb do
 
     let(:properties) { {
         "message" => "This is a message!",
-        "uuid" => SecureRandom.uuid,
+        "uuid" => "00000000-0000-0000-0000-000000000000",
         "number" => BigDecimal.new("4321.1234"),
         "utf8" => "żółć"
     } }
@@ -43,24 +43,18 @@ describe LogStash::Outputs::Mongodb do
     end
 
     [
-        {:query_key => nil, :query_value => "qv", :upsert => false,
-         :expected => {:query_key => "_id", :query_value => "qv", :upsert => false}
-        },
-        {:query_key => "qk", :query_value => "qv", :upsert => false,
-         :expected => {:query_key => "qk", :query_value => "qv", :upsert => false}
-        },
-        {:query_key => "qk", :query_value => "qv", :upsert => nil,
-         :expected => {:query_key => "qk", :query_value => "qv", :upsert => false}
-        },
-        {:query_key => nil, :query_value => "qv", :upsert => true,
-         :expected => {:query_key => "_id", :query_value => "qv", :upsert => true}
-        },
-        {:query_key => "qk", :query_value => "qv", :upsert => true,
-         :expected => {:query_key => "qk", :query_value => "qv", :upsert => true}
-        },
+      {:filter => {"_id" => "[uuid]"}, :upsert => false,
+       :expected => {:filter => {"_id" => "00000000-0000-0000-0000-000000000000"}, :upsert => false}
+      },
+      {:filter => {"%{utf8}" => "[message]"}, :upsert => nil,
+       :expected => {:filter => {"żółć" => "This is a message!"}, :upsert => false}
+      },
+      {:filter => {"%{utf8}" => "[message]"}, :upsert => true,
+       :expected => {:filter => {"żółć" => "This is a message!"}, :upsert => true}
+      },
     ].each do |test|
 
-      describe "when processing an event with query_key set to '#{test[:query_key]}', query_value set to '#{test[:query_value]}' and upsert set to '#{test[:upsert]}'" do
+      describe "when processing an event with :filter => '#{test[:filter]}' and :upsert => '#{test[:upsert]}'" do
 
         let(:config) {
           configuration = {
@@ -69,11 +63,8 @@ describe LogStash::Outputs::Mongodb do
               "collection" => collection,
               "action" => action
           }
-          unless test[:query_key].nil?
-            configuration["query_key"] = test[:query_key]
-          end
-          unless test[:query_value].nil?
-            configuration["query_value"] = test[:query_value]
+          unless test[:filter].nil?
+            configuration["filter"] = test[:filter]
           end
           unless test[:upsert].nil?
             configuration["upsert"] = test[:upsert]
@@ -82,11 +73,11 @@ describe LogStash::Outputs::Mongodb do
         }
 
         expected = test[:expected]
-        it "should send that document as a replace to mongodb with query_key '#{expected[:query_key]}', query_value '#{expected[:query_value]}' and upsert '#{expected[:upsert]}'" do
+        it "should send that document as a replace to mongodb with :filter => '#{expected[:filter]}' and upsert => '#{expected[:upsert]}'" do
           expect(event).to receive(:timestamp).and_return(nil)
           expect(event).to receive(:to_hash).and_return(properties)
           expect(collection).to receive(:bulk_write).with(
-              [{:replace_one => {:filter => {expected[:query_key] => expected[:query_value]}, :replacement => properties, :upsert => expected[:upsert]}}]
+              [{:replace_one => {:filter => expected[:filter], :replacement => properties, :upsert => expected[:upsert]}}]
           )
           subject.receive(event)
         end

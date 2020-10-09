@@ -8,14 +8,14 @@ describe LogStash::Outputs::Mongodb do
   let(:database) { 'logstash' }
   let(:collection) { 'logs' }
   let(:action) { 'update' }
-  let(:query_value) { 'qv' }
+  let(:filter) { {"_id" => 'foo' } }
 
   let(:config) { {
       "uri" => uri,
       "database" => database,
       "collection" => collection,
       "action" => action,
-      "query_value" => query_value
+      "filter" => filter,
   } }
 
   describe "receive method while action is 'update'" do
@@ -64,7 +64,7 @@ describe LogStash::Outputs::Mongodb do
         expect(event).to receive(:timestamp).and_return(nil)
         expect(event).to receive(:to_hash).and_return(properties)
         expect(collection).to receive(:bulk_write).with(
-            [{:update_one => {:filter => {"_id" => query_value}, :update => {"$set" => {
+            [{:update_one => {:filter => {"_id" => 'foo' }, :update => {"$set" => {
                 "message" => "This is a message!",
                 "rootHashField.numFieldInHash" => 1,
                 "rootHashField.hashFieldInHash.numField" => 2,

@@ -1,6 +1,10 @@
-# Logstash Plugin
+# Logstash Mongo Output Plugin
 
-[![Travis Build Status](https://travis-ci.org/logstash-plugins/logstash-output-mongodb.svg)](https://travis-ci.org/logstash-plugins/logstash-output-mongodb)
+---
+This is a fork of [logstash-plugins/logstash-output-mongodb](https://github.com/logstash-plugins/logstash-output-mongodb).
+
+It adds the :action, :filter, :update_expressions and :upsert parameters
+---
 
 This is a plugin for [Logstash](https://github.com/elastic/logstash).
 
@@ -21,20 +25,17 @@ Need help? Try #logstash on freenode IRC or the https://discuss.elastic.co/c/log
 
 ### 1. Plugin Developement and Testing
 
-#### Code
-- To get started, you'll need JRuby with the Bundler gem installed.
+For developing this plugin we use the wonderful work of [cameronkerrnz/logstash-plugin-dev](https://github.com/cameronkerrnz/logstash-plugin-dev):
 
-- Create a new plugin or clone and existing from the GitHub [logstash-plugins](https://github.com/logstash-plugins) organization. We also provide [example plugins](https://github.com/logstash-plugins?query=example).
+To start an interactive environment run:
 
-- Install dependencies
-```sh
-bundle install
+``` sh
+docker run --rm -it -v ${PWD}:/work cameronkerrnz/logstash-plugin-dev:7.9
 ```
 
-#### Test
+After that you can run the usual suspects:
 
-- Update your dependencies
-
+- Install/Update dependencies
 ```sh
 bundle install
 ```

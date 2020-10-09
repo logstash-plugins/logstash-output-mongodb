@@ -4,7 +4,7 @@ require "logstash/plugin"
 
 describe LogStash::Outputs::Mongodb do
 
-  let(:uri) { 'mongodb://localhost:27017' }
+  let(:uri) { 'mongodb://mongo:27017' }
   let(:database) { 'logstash' }
   let(:collection) { 'logs' }
   let(:action) { 'update' }
@@ -21,8 +21,9 @@ describe LogStash::Outputs::Mongodb do
 
     let(:properties) { {
         "message" => "This is a message!",
-        "uuid" => SecureRandom.uuid,
+        "uuid" => "00000000-0000-0000-0000-000000000000",
         "number" => BigDecimal.new("4321.1234"),
+        "integer" => 1,
         "utf8" => "żółć"
     } }
     let(:event) { LogStash::Event.new(properties) }
@@ -43,25 +44,38 @@ describe LogStash::Outputs::Mongodb do
     end
 
     [
-        {:query_key => nil, :query_value => "qv", :upsert => false,
-         :expected => {:query_key => "_id", :query_value => "qv", :upsert => false}
-        },
-        {:query_key => "qk", :query_value => "qv", :upsert => false,
-         :expected => {:query_key => "qk", :query_value => "qv", :upsert => false}
-        },
-        {:query_key => "qk", :query_value => "qv", :upsert => nil,
-         :expected => {:query_key => "qk", :query_value => "qv", :upsert => false}
-        },
-        {:query_key => nil, :query_value => "qv", :upsert => true,
-         :expected => {:query_key => "_id", :query_value => "qv", :upsert => true}
-        },
-        {:query_key => "qk", :query_value => "qv", :upsert => true,
-         :expected => {:query_key => "qk", :query_value => "qv", :upsert => true}
-        },
+      {:filter => {"_id" => "[uuid]"}, :upsert => false,
+       :expected => {:filter => {"_id" => "00000000-0000-0000-0000-000000000000"}, :upsert => false}
+      },
+      {:filter => {"%{utf8}" => "[message]"}, :upsert => nil,
+       :expected => {:filter => {"żółć" => "This is a message!"}, :upsert => false}
+      },
+      {:filter => {"%{utf8}" => "[message]"}, :upsert => true,
+       :expected => {:filter => {"żółć" => "This is a message!"}, :upsert => true}
+      },
+      # Nested hash recursion
+      {:filter => {"_id" => "123"},
+       :update_expressions => {"$inc" => {"quantity" => "[integer]"},
+                               "$currentDate" => {"updated_at" => {"$type" => "timestamp"}}},
+       :expected => {:filter => {"_id" => "123"},
+                     :update_expressions => {"$inc" => {"quantity" => 1},
+                                             "$currentDate" => {"updated_at" => {"$type" => "timestamp"}}},
+                     :upsert => false}
+      },
+      # Nested key-value substitution
+      {:filter => {"_id" => "123"},
+       :update_expressions => {"$inc" => {"quantity" => "[integer]"},
+                               "$rename" => {"foo" => "[utf8]",
+                                             "bar-%{integer}" => "baz"}},
+       :expected => {:filter => {"_id" => "123"},
+                     :update_expressions => {"$inc" => {"quantity" => 1},
+                                             "$rename" => {"foo" => "żółć",
+                                                           "bar-1" => "baz"}},
+                     :upsert => false}
+      },
     ].each do |test|
 
-      describe "when processing an event with query_key set to '#{test[:query_key]}', query_value set to '#{test[:query_value]}' and upsert set to '#{test[:upsert]}'" do
-
+      describe "when processing an event with :filter => '#{test[:filter]}', :upsert => '#{test[:upsert]}' and merge :update and :update_expressions}'" do
         let(:config) {
           configuration = {
               "uri" => uri,
@@ -69,25 +83,34 @@ describe LogStash::Outputs::Mongodb do
               "collection" => collection,
               "action" => action
           }
-          unless test[:query_key].nil?
-            configuration["query_key"] = test[:query_key]
-          end
-          unless test[:query_value].nil?
-            configuration["query_value"] = test[:query_value]
+          unless test[:filter].nil?
+            configuration["filter"] = test[:filter]
           end
           unless test[:upsert].nil?
             configuration["upsert"] = test[:upsert]
+          end
+          unless test[:update_expressions].nil?
+            configuration["update_expressions"] = test[:update_expressions]
           end
           return configuration
         }
 
         expected = test[:expected]
-        it "should send that document as an update to mongodb with query_key '#{expected[:query_key]}', query_value '#{expected[:query_value]}' and upsert '#{expected[:upsert]}'" do
+        it "should send that document as an update to mongodb with :filter => '#{expected[:filter]}', :upsert => '#{expected[:upsert]}' and :update_expressions => '#{expected[:update_expressions]}'" do
+
           expect(event).to receive(:timestamp).and_return(nil)
           expect(event).to receive(:to_hash).and_return(properties)
+
+          update = if !expected[:update_expressions].nil?
+                     expected[:update_expressions]
+                   else
+                     {"$set" => properties}
+                   end
+
           expect(collection).to receive(:bulk_write).with(
-              [{:update_one => {:filter => {expected[:query_key] => expected[:query_value]}, :update => {"$set" => properties}, :upsert => expected[:upsert]}}]
-          )
+                                  [{:update_one => {:filter => expected[:filter],
+                                                    :update => update,
+                                                    :upsert => expected[:upsert]}}])
           subject.receive(event)
         end
       end

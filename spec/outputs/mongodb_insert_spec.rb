@@ -45,7 +45,7 @@ describe LogStash::Outputs::Mongodb do
     describe "when processing an event" do
       let(:properties) {{
         "message" => "This is a message!",
-        "uuid" => SecureRandom.uuid,
+        "uuid" => "00000000-0000-0000-0000-000000000000",
         "number" => BigDecimal.new("4321.1234"),
         "utf8" => "żółć"
       }}
