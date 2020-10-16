@@ -1,10 +1,65 @@
-# Logstash Plugin
+# Logstash Mongo Output Plugin
 
-[![Travis Build Status](https://travis-ci.org/logstash-plugins/logstash-output-mongodb.svg)](https://travis-ci.org/logstash-plugins/logstash-output-mongodb)
+---
+This is a fork of [logstash-plugins/logstash-output-mongodb](https://github.com/logstash-plugins/logstash-output-mongodb).
+
+It adds the :action, :filter, :update_expressions and :upsert parameters
+---
 
 This is a plugin for [Logstash](https://github.com/elastic/logstash).
 
 It is fully free and fully open source. The license is Apache 2.0, meaning you are pretty much free to use it however you want in whatever way.
+
+## Example Usage
+
+``` ruby
+output {
+    if [@metadata][event_type] == "product.event.created" {
+        mongodb {
+            id => "orders.projection.mongodb.product-insert"
+            uri => "${MONGO_DNS}"
+            collection => "product-aggregates"
+            database => "carts"
+            isodate => true
+            action => "update"
+            upsert => true
+        }
+    }
+
+    if [@metadata][event_type] == "product.event.updated" or [@metadata][event_type] == "product.event.deleted" {
+        mongodb {
+            id => "orders.projection.mongodb.product-update"
+            uri => "${MONGO_DNS}"
+            collection => "product-aggregates"
+            database => "carts"
+            isodate => true
+            action => "update"
+            filter => {
+                "_id" => "[_id]"
+                "store_id" => "[store_id]"
+            }
+        }
+    }
+
+    if [@metadata][event_type] == "stock.updated" and [quantity] > 0 {
+        mongodb {
+            id => "orders.projection.mongodb.stock-update"
+            uri => "${MONGO_DNS}"
+            collection => "product-aggregates"
+            database => "carts"
+            isodate => true
+            action => "update"
+            filter => {
+                "_id" => "[_id]"
+                "store_id" => "[store_id]"
+            }
+            update_expressions => {
+                "$inc" => {"stock" => "[stock_delta]"}
+            }
+        }
+    }
+}
+```
 
 ## Documentation
 
@@ -21,20 +76,17 @@ Need help? Try #logstash on freenode IRC or the https://discuss.elastic.co/c/log
 
 ### 1. Plugin Developement and Testing
 
-#### Code
-- To get started, you'll need JRuby with the Bundler gem installed.
+For developing this plugin we use the wonderful work of [cameronkerrnz/logstash-plugin-dev](https://github.com/cameronkerrnz/logstash-plugin-dev):
 
-- Create a new plugin or clone and existing from the GitHub [logstash-plugins](https://github.com/logstash-plugins) organization. We also provide [example plugins](https://github.com/logstash-plugins?query=example).
+To start an interactive environment run:
 
-- Install dependencies
-```sh
-bundle install
+``` sh
+docker run --rm -it -v ${PWD}:/work cameronkerrnz/logstash-plugin-dev:7.9
 ```
 
-#### Test
+After that you can run the usual suspects:
 
-- Update your dependencies
-
+- Install/Update dependencies
 ```sh
 bundle install
 ```
