@@ -202,7 +202,7 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         end
       else
         result = write_to_mongodb(collection, [document])
-        @logger.debug("Bulk write result", :result => result)
+        @logger.debug("Bulk write result: #{result.to_s}")
       end
 
     rescue => e
