@@ -10,6 +10,57 @@ This is a plugin for [Logstash](https://github.com/elastic/logstash).
 
 It is fully free and fully open source. The license is Apache 2.0, meaning you are pretty much free to use it however you want in whatever way.
 
+## Example Usage
+
+``` ruby
+output {
+    if [@metadata][event_type] == "product.event.created" {
+        mongodb {
+            id => "orders.projection.mongodb.product-insert"
+            uri => "${MONGO_DNS}"
+            collection => "product-aggregates"
+            database => "carts"
+            isodate => true
+            action => "update"
+            upsert => true
+        }
+    }
+
+    if [@metadata][event_type] == "product.event.updated" or [@metadata][event_type] == "product.event.deleted" {
+        mongodb {
+            id => "orders.projection.mongodb.product-update"
+            uri => "${MONGO_DNS}"
+            collection => "product-aggregates"
+            database => "carts"
+            isodate => true
+            action => "update"
+            filter => {
+                "_id" => "[_id]"
+                "store_id" => "[store_id]"
+            }
+        }
+    }
+
+    if [@metadata][event_type] == "stock.updated" and [quantity] > 0 {
+        mongodb {
+            id => "orders.projection.mongodb.stock-update"
+            uri => "${MONGO_DNS}"
+            collection => "product-aggregates"
+            database => "carts"
+            isodate => true
+            action => "update"
+            filter => {
+                "_id" => "[_id]"
+                "store_id" => "[store_id]"
+            }
+            update_expressions => {
+                "$inc" => {"stock" => "[stock_delta]"}
+            }
+        }
+    }
+}
+```
+
 ## Documentation
 
 Logstash provides infrastructure to automatically generate documentation for this plugin. We use the asciidoc format to write documentation so any comments in the source code will be first converted into asciidoc and then into html. All plugin documentation are placed under one [central location](http://www.elastic.co/guide/en/logstash/current/).
