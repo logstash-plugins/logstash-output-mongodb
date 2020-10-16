@@ -2,6 +2,12 @@
 require "logstash/devutils/rspec/spec_helper"
 require "logstash/outputs/mongodb"
 
+if ENV["TEST_DEBUG"]
+  LogStash::Logging::Logger::configure_logging("DEBUG")
+else
+  LogStash::Logging::Logger::configure_logging("OFF")
+end
+
 RSpec.configure do |config|
   config.example_status_persistence_file_path = 'spec/test-report.txt'
 end

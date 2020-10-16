@@ -29,6 +29,11 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # The number of seconds to wait after failure before retrying.
   config :retry_delay, :validate => :number, :default => 3, :required => false
 
+  # The maximum number of times we should retry for.
+  #
+  # If not present the plugin will retry forever. This is the default.
+  config :max_retries, :validate => :number, :default => -1, :required => false
+
   # If true, an "_id" field will be added to the document before insertion.
   # The "_id" field will use the timestamp of the event and overwrite an existing
   # "_id" field in the event.
@@ -144,6 +149,9 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   end
 
   def receive(event)
+
+    retry_count = 0
+
     action = event.sprintf(@action)
 
     validate_action(action, @filter, @update_expressions)
@@ -196,7 +204,21 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         result = write_to_mongodb(collection, [document])
         @logger.debug("Bulk write result", :result => result)
       end
+
     rescue => e
+      logger_data = {:collection => collection,
+                     :document => document,
+                     :action => action,
+                     :filter => document["metadata_mongodb_output_filter"],
+                     :update_expressions => document["metadata_mongodb_output_update_expressions"]}
+
+      if (e.is_a? Mongo::Error::BulkWriteError)
+        logger_data["result"] = e.result
+      end
+
+      @logger.debug("Error: #{e.message}", logger_data)
+      @logger.trace("Error backtrace", backtrace: e.backtrace)
+
       if e.message =~ /^E11000/
         # On a duplicate key error, skip the insert.
         # We could check if the duplicate key err is the _id key
@@ -205,9 +227,13 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         # to fix the issue.
         @logger.warn("Skipping insert because of a duplicate key error", :event => event, :exception => e)
       else
-        @logger.warn("Failed to send event to MongoDB retrying in #{@retry_delay.to_s} seconds", :result=> e.result, :message => e.message)
-        sleep(@retry_delay)
-        retry
+        # if max_retries is negative we retry forever
+        if (@max_retries < 0 || retry_count < @max_retries)
+          retry_count += 1
+          @logger.warn("Failed to send event to MongoDB retrying (#{retry_count.to_s}) in #{@retry_delay.to_s} seconds")
+          sleep(@retry_delay)
+          retry
+        end
       end
     end
   end
