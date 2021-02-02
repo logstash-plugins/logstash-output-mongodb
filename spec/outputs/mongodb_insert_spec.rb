@@ -7,11 +7,13 @@ describe LogStash::Outputs::Mongodb do
   let(:uri)        { 'mongodb://localhost:27017' }
   let(:database)   { 'logstash' }
   let(:collection) { 'logs' }
+  let(:action) { 'insert' }
 
   let(:config) {{
     "uri" => uri,
     "database" => database,
-    "collection" => collection
+    "collection" => collection,
+    "action" => action
   }}
 
   it "should register and close" do
@@ -20,7 +22,7 @@ describe LogStash::Outputs::Mongodb do
     plugin.close
   end
 
-  describe "receive" do
+  describe "receive method while action is 'insert'" do
     subject! { LogStash::Outputs::Mongodb.new(config) }
 
     let(:event)      { LogStash::Event.new(properties) }
@@ -32,7 +34,7 @@ describe LogStash::Outputs::Mongodb do
       allow(Mongo::Client).to receive(:new).and_return(connection)
       allow(connection).to receive(:use).and_return(client)
       allow(client).to receive(:[]).and_return(collection)
-      allow(collection).to receive(:insert_one)
+      allow(collection).to receive(:bulk_write)
       subject.register
     end
 
@@ -40,7 +42,7 @@ describe LogStash::Outputs::Mongodb do
       subject.close
     end
 
-    describe "#send" do
+    describe "when processing an event" do
       let(:properties) {{
         "message" => "This is a message!",
         "uuid" => SecureRandom.uuid,
@@ -49,36 +51,41 @@ describe LogStash::Outputs::Mongodb do
       }}
 
       it "should send the event to the database" do
-        expect(collection).to receive(:insert_one)
+        expect(collection).to receive(:bulk_write)
         subject.receive(event)
       end
     end
 
-    describe "no event @timestamp" do
+    describe "when processing an event without @timestamp set" do
       let(:properties) { { "message" => "foo" } }
 
-      it "should not contain a @timestamp field in the mongo document" do
+      it "should send a document without @timestamp field to mongodb" do
         expect(event).to receive(:timestamp).and_return(nil)
         expect(event).to receive(:to_hash).and_return(properties)
-        expect(collection).to receive(:insert_one).with(properties)
+        expect(collection).to receive(:bulk_write).with(
+            [ {:insert_one => properties} ]
+        )
         subject.receive(event)
       end
     end
 
-    describe "generateId" do
+    describe "when generateId is set" do
       let(:properties) { { "message" => "foo" } }
       let(:config) {{
           "uri" => uri,
           "database" => database,
           "collection" => collection,
-          "generateId" => true
+          "generateId" => true,
+          "action" => "insert"
       }}
 
-      it "should contain a BSON::ObjectId as _id" do
+      it "should send a document containing a BSON::ObjectId as _id to mongodb" do
         expect(BSON::ObjectId).to receive(:new).and_return("BSON::ObjectId")
         expect(event).to receive(:timestamp).and_return(nil)
         expect(event).to receive(:to_hash).and_return(properties)
-        expect(collection).to receive(:insert_one).with(properties.merge("_id" => "BSON::ObjectId"))
+        expect(collection).to receive(:bulk_write).with(
+            [ {:insert_one => properties.merge("_id" => "BSON::ObjectId")} ]
+        )
         subject.receive(event)
       end
     end

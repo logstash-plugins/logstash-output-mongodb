@@ -43,13 +43,23 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # whatever the bulk interval value (mongodb hard limit is 1000).
   config :bulk_size, :validate => :number, :default => 900, :maximum => 999, :min => 2
 
+  # The method used to write processed events to MongoDB.
+  # Possible values are `insert`, `update` and `replace`.
+  config :action, :validate => :string, :required => true
+  # The key of the query to find the document to update or replace.
+  config :query_key, :validate => :string, :required => false, :default => "_id"
+  # The value of the query to find the document to update or replace. This can be dynamic using the `%{foo}` syntax.
+  config :query_value, :validate => :string, :required => false
+  # If true, a new document is created if no document exists in DB with given `document_id`.
+  # Only applies if action is `update` or `replace`.
+  config :upsert, :validate => :boolean, :required => false, :default => false
+
   # Mutex used to synchronize access to 'documents'
   @@mutex = Mutex.new
 
   def register
-    if @bulk_size > 1000
-      raise LogStash::ConfigurationError, "Bulk size must be lower than '1000', currently '#{@bulk_size}'"
-    end
+
+    validate_config
 
     Mongo::Logger.logger = @logger
     conn = Mongo::Client.new(@uri)
@@ -65,12 +75,24 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         @@mutex.synchronize do
           @documents.each do |collection, values|
             if values.length > 0
-              @db[collection].insert_many(values)
+              write_to_mongodb(collection, values)
               @documents.delete(collection)
             end
           end
         end
       end
+    end
+  end
+
+  def validate_config
+    if @bulk_size > 1000
+      raise LogStash::ConfigurationError, "Bulk size must be lower than '1000', currently '#{@bulk_size}'"
+    end
+    if @action != "insert" && @action != "update" && @action != "replace"
+      raise LogStash::ConfigurationError, "Only insert, update and replace are valid for 'action' setting."
+    end
+    if (@action == "update" || @action == "replace") && (@query_value.nil? || @query_value.empty?)
+      raise LogStash::ConfigurationError, "If action is update or replace, query_value must be set."
     end
   end
 
@@ -94,8 +116,11 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         document["_id"] = BSON::ObjectId.new
       end
 
+      collection = event.sprintf(@collection)
+      if @action == "update" or @action == "replace"
+        document["metadata_mongodb_output_query_value"] = event.sprintf(@query_value)
+      end
       if @bulk
-        collection = event.sprintf(@collection)
         @@mutex.synchronize do
           if(!@documents[collection])
             @documents[collection] = []
@@ -103,12 +128,12 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
           @documents[collection].push(document)
 
           if(@documents[collection].length >= @bulk_size)
-            @db[collection].insert_many(@documents[collection])
+            write_to_mongodb(collection, @documents[collection])
             @documents.delete(collection)
           end
         end
       else
-        @db[event.sprintf(@collection)].insert_one(document)
+        write_to_mongodb(collection, [document])
       end
     rescue => e
       if e.message =~ /^E11000/
@@ -122,6 +147,38 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         @logger.warn("Failed to send event to MongoDB, retrying in #{@retry_delay.to_s} seconds", :event => event, :exception => e)
         sleep(@retry_delay)
         retry
+      end
+    end
+  end
+
+  def write_to_mongodb(collection, documents)
+    ops = get_write_ops(documents)
+    @db[collection].bulk_write(ops)
+  end
+
+  def get_write_ops(documents)
+    ops = []
+    documents.each do |doc|
+      replaced_query_value = doc["metadata_mongodb_output_query_value"]
+      doc.delete("metadata_mongodb_output_query_value")
+      if @action == "insert"
+        ops << {:insert_one => doc}
+      elsif @action == "update"
+        ops << {:update_one => {:filter => {@query_key => replaced_query_value}, :update => {'$set' => to_dotted_hash(doc)}, :upsert => @upsert}}
+      elsif @action == "replace"
+        ops << {:replace_one => {:filter => {@query_key => replaced_query_value}, :replacement => doc, :upsert => @upsert}}
+      end
+    end
+    ops
+  end
+
+  def to_dotted_hash(hash, recursive_key = "")
+    hash.each_with_object({}) do |(k, v), ret|
+      key = recursive_key + k.to_s
+      if v.is_a? Hash
+        ret.merge! to_dotted_hash(v, key + ".")
+      else
+        ret[key] = v
       end
     end
   end
