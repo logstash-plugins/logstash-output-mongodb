@@ -1,5 +1,5 @@
 ## 3.1.7
-  - Fix "wrong number of arguments" error when shipping events to MongoDB (fixes #60, #64, #65) [#66](https://api.github.com/repos/logstash-plugins/logstash-output-mongodb/pulls/66)
+  - Fix "wrong number of arguments" error when shipping events to MongoDB (fixes #60, #64, #65) [#66](https://github.com/logstash-plugins/logstash-output-mongodb/pull/66)
 
 ## 3.1.6
   - Fixes BigDecimal and Timestamp encoding and update driver to v2.6 [#59](https://github.com/logstash-plugins/logstash-output-mongodb/pull/59)
