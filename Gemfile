@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-logstash_path = ENV["LOGSTASH_PATH"] || "../../logstash"
+logstash_path = ENV["LOGSTASH_PATH"] || "."
 use_logstash_source = ENV["LOGSTASH_SOURCE"] && ENV["LOGSTASH_SOURCE"].to_s == "1"
 
 if Dir.exist?(logstash_path) && use_logstash_source
