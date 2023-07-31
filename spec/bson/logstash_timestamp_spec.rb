@@ -2,7 +2,7 @@
 require_relative "../spec_helper"
 
 describe ::LogStash::Timestamp do
-  let(:time_array) { [1918,11,11,11,0,0, "+00:00"] }
+  let(:time_array) { [1918,11,11,11,0,0] }
   let(:a_time) { Time.utc(*time_array) }
   let(:bson_time) { Time.utc(*time_array).to_bson }
 
