@@ -18,7 +18,7 @@ describe LogStash::Outputs::Mongodb, :integration => true do
     subject { LogStash::Outputs::Mongodb.new(config) }
 
     let(:properties) { { "message" => "This is a message!",
-                         "uuid" => uuid, "number" => BigDecimal.new("4321.1234"),
+                         "uuid" => uuid, "number" => BigDecimal("4321.1234"),
                          "utf8" => "żółć", "int" => 42,
                          "arry" => [42, "string", 4321.1234]} }
     let(:event)      { LogStash::Event.new(properties) }
