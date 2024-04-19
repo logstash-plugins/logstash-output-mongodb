@@ -43,7 +43,7 @@ module BSON
       # @param [ BSON ] bson object from Mongo.
       # @return [ BigDecimal ] The decoded BigDecimal.
       # @see http://bsonspec.org/#/specification
-      def from_bson(bson)
+      def from_bson(bson, **_options)
         from_bson_double(bson.get_bytes(8))
       end
 

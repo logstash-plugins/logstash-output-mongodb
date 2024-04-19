@@ -34,7 +34,7 @@ module BSON
       # @param [ BSON ] bson encoded time.
       # @return [ ::LogStash::Timestamp ] The decoded UTC time as a ::LogStash::Timestamp.
       # @see http://bsonspec.org/#/specification
-      def from_bson(bson)
+      def from_bson(bson, **_options)
         seconds, fragment = BSON::Int64.from_bson(bson).divmod(1000)
         new(::Time.at(seconds, fragment * 1000).utc)
       end

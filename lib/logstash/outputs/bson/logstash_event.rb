@@ -55,7 +55,7 @@ module BSON
       # @param [ ByteBuffer ] buffer The byte buffer.
       # @return [ Event ] The decoded bson document.
       # @see http://bsonspec.org/#/specification
-      def from_bson(buffer)
+      def from_bson(buffer, **_options)
         hash = Hash.new
         buffer.get_int32 # Throw away the size.
         while (type = buffer.get_byte) != NULL_BYTE
