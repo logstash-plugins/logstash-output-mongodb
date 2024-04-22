@@ -1,4 +1,6 @@
-## #unreleased
+## 3.1.8
+  - Fix tests failture for  ELASTIC_STACK_VERSION=8.x.  Fail message:  undefined method `validating_keys?' for BSON::Config:Module 
+  - Fix MongoDB connection error - Failed to handshake [#88] https://github.com/logstash-plugins/logstash-output-mongodb/issues/88
   - Fix: Fix failing test spec on jruby-9.3.4.0 [#81](https://github.com/logstash-plugins/logstash-output-mongodb/pull/81)
 
 ## 3.1.7
