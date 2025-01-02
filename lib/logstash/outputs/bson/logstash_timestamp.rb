@@ -25,7 +25,7 @@ module BSON
     # A time is type 0x09 in the BSON spec.
     BSON_TYPE = 9.chr.force_encoding(BINARY).freeze
 
-    def to_bson(buffer = ByteBuffer.new, validating_keys = Config.validating_keys?)
+    def to_bson(buffer = ByteBuffer.new, _validating_keys = nil)
       time.to_bson(buffer)
     end
 
@@ -34,7 +34,7 @@ module BSON
       # @param [ BSON ] bson encoded time.
       # @return [ ::LogStash::Timestamp ] The decoded UTC time as a ::LogStash::Timestamp.
       # @see http://bsonspec.org/#/specification
-      def from_bson(bson)
+      def from_bson(bson, **_options)
         seconds, fragment = BSON::Int64.from_bson(bson).divmod(1000)
         new(::Time.at(seconds, fragment * 1000).utc)
       end

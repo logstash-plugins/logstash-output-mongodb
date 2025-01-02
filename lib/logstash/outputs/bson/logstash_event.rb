@@ -30,7 +30,7 @@ module BSON
     #   Event.new("field" => "value").to_bson
     # @return [ String ] The encoded string.
     # @see http://bsonspec.org/#/specification
-     def to_bson(buffer = ByteBuffer.new, validating_keys = Config.validating_keys?)
+     def to_bson(buffer = ByteBuffer.new, _validating_keys = nil)
       position = buffer.length
       buffer.put_int32(0)
       to_hash.each do |field, value|
@@ -55,7 +55,7 @@ module BSON
       # @param [ ByteBuffer ] buffer The byte buffer.
       # @return [ Event ] The decoded bson document.
       # @see http://bsonspec.org/#/specification
-      def from_bson(buffer)
+      def from_bson(buffer, **_options)
         hash = Hash.new
         buffer.get_int32 # Throw away the size.
         while (type = buffer.get_byte) != NULL_BYTE
