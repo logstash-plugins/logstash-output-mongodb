@@ -34,6 +34,12 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # "_id" field in the event.
   config :generateId, :validate => :boolean, :default => false
 
+  # The field that will be used for the _id field
+  # This can be for example the ID column of a SQL table when using JDBC.
+  config :idField, :validate => :string, :required => false
+
+  # Upsert documents flag, set to true to use replace_one instead of insert_one.
+  config :upsert, :validate => :boolean, :default => false
 
   # Bulk insert flag, set to true to allow bulk insertion, else it will insert events one by one.
   config :bulk, :validate => :boolean, :default => false
@@ -65,7 +71,14 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         @@mutex.synchronize do
           @documents.each do |collection, values|
             if values.length > 0
-              @db[collection].insert_many(values)
+              if @upsert
+                bulk_operations = values.map do |doc|
+                  { replace_one: { filter: { _id: doc["_id"] }, replacement: doc, upsert: true } }
+                end
+                @db[collection].bulk_write(bulk_operations)
+              else
+                @db[collection].insert_many(values)
+              end
               @documents.delete(collection)
             end
           end
@@ -94,6 +107,17 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
         document["_id"] = BSON::ObjectId.new
       end
 
+      if @idField
+        field_name = event.sprintf(@idField)
+        if event.include?(field_name) && !event.get(field_name).nil?
+          document["_id"] = event.get(field_name)
+        else
+          @logger.warn("Cannot set MongoDB document `_id` field because it does not exist in the event", :event => event)
+          document["_id"] = BSON::ObjectId.new
+        end
+      end
+
+
       if @bulk
         collection = event.sprintf(@collection)
         @@mutex.synchronize do
@@ -103,12 +127,23 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
           @documents[collection].push(document)
 
           if(@documents[collection].length >= @bulk_size)
-            @db[collection].insert_many(@documents[collection])
+            if @upsert && document.key?("_id")
+                bulk_operations = @documents[collection].map do |doc|
+                  { replace_one: { filter: { _id: doc["_id"] }, replacement: doc, upsert: true } }
+                end
+                @db[collection].bulk_write(bulk_operations)
+            else
+                @db[collection].insert_many(@documents[collection])
+            end
             @documents.delete(collection)
           end
         end
       else
-        @db[event.sprintf(@collection)].insert_one(document)
+        if @upsert && document.key?("_id")
+          @db[event.sprintf(@collection)].replace_one({ _id: document["_id"] }, document, { upsert: true })
+        else
+          @db[event.sprintf(@collection)].insert_one(document)
+        end
       end
     rescue => e
       if e.message =~ /^E11000/
