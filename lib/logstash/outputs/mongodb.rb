@@ -43,6 +43,10 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
   # whatever the bulk interval value (mongodb hard limit is 1000).
   config :bulk_size, :validate => :number, :default => 900, :maximum => 999, :min => 2
 
+  # Upsert documents flag, set to true to use replace_one instead of insert_one. This setting is ignored when bulk
+  # insert is used
+  config :upsert, :validate => :boolean, :default => false
+
   # Mutex used to synchronize access to 'documents'
   @@mutex = Mutex.new
 
@@ -108,7 +112,11 @@ class LogStash::Outputs::Mongodb < LogStash::Outputs::Base
           end
         end
       else
-        @db[event.sprintf(@collection)].insert_one(document)
+        if @upsert && document.key?("_id")
+          @db[event.sprintf(@collection)].replace_one({ _id: document["_id"] }, document, { upsert: true })
+        else
+          @db[event.sprintf(@collection)].insert_one(document)
+        end
       end
     rescue => e
       if e.message =~ /^E11000/
