@@ -23,7 +23,7 @@ describe ::BigDecimal do
   describe "class methods" do
     it "builds a new BigDecimal from BSON" do
       decoded = described_class.from_bson(4321.1234.to_bson)
-      expect(decoded).to eql(BigDecimal.new(a_number))
+      expect(decoded).to eql(BigDecimal(a_number))
     end
   end
 end

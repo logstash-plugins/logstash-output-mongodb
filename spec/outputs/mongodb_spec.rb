@@ -44,7 +44,7 @@ describe LogStash::Outputs::Mongodb do
       let(:properties) {{
         "message" => "This is a message!",
         "uuid" => SecureRandom.uuid,
-        "number" => BigDecimal.new("4321.1234"),
+        "number" => BigDecimal("4321.1234"),
         "utf8" => "żółć"
       }}
 
