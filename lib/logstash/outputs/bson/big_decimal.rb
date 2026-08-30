@@ -50,7 +50,7 @@ module BSON
       private
 
       def from_bson_double(double)
-        new(double.unpack(PACK).first.to_s)
+        BigDecimal(double.unpack(PACK).first.to_s)
       end
     end
 
